@@ -606,18 +606,33 @@ class Event
     protected function pingCallback($url)
     {
         return function (Container $container) use ($url) {
-            if (null === $this->httpClient) {
-                $this->httpClient = $container->bound(HttpClientInterface::class)
-                    ? $container->make(HttpClientInterface::class)
-                    : $container->make(HttpClient::class);
-            }
-
             try {
-                $this->httpClient->request('GET', $url);
+                $this->getHttpClient()->request('GET', $url);
             } catch (ClientExceptionInterface|TransferException $e) {
                 $container->make(ExceptionHandler::class)->report($e);
             }
         };
+    }
+
+    protected function getHttpClient(): HttpClientInterface
+    {
+        if (null !== $this->httpClient) {
+            return $this->httpClient;
+        }
+
+        if ($container->bound(HttpClientInterface::class)) {
+            return $this->httpClient = $container->make(HttpClientInterface::class);
+        }
+
+        if ($container->bound(HttpClient::class)) {
+            return $this->httpClient = $container->make(HttpClient::class);
+        }
+
+        return $this->httpClient = new HttpClient([
+            'connect_timeout' => 10,
+            'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT,
+            'timeout' => 30,
+        ]);
     }
 
     /**
