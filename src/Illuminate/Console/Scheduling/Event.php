@@ -607,14 +607,20 @@ class Event
     {
         return function (Container $container) use ($url) {
             try {
-                $this->getHttpClient()->request('GET', $url);
+                $this->getHttpClient($container)->request('GET', $url);
             } catch (ClientExceptionInterface|TransferException $e) {
                 $container->make(ExceptionHandler::class)->report($e);
             }
         };
     }
 
-    protected function getHttpClient(): HttpClientInterface
+    /**
+     * Get the Guzzle HTTP Client to use to send pings.
+     *
+     * @param  \Illuminate\Contracts\Container\Container  $container
+     * @return \GuzzleHttp\ClientInterface
+     */
+    protected function getHttpClient(Container $container): HttpClientInterface
     {
         if (null !== $this->httpClient) {
             return $this->httpClient;
