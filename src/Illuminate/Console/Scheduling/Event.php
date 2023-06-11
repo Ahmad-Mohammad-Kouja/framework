@@ -5,6 +5,7 @@ namespace Illuminate\Console\Scheduling;
 use Closure;
 use Cron\CronExpression;
 use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\ClientInterface as HttpClientInterface;
 use GuzzleHttp\Exception\TransferException;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Debug\ExceptionHandler;
@@ -127,6 +128,13 @@ class Event
      * @var array
      */
     protected $beforeCallbacks = [];
+
+    /**
+     * The array of callbacks to be run before the event is started.
+     *
+     * @var \GuzzleHttp\ClientInterface|null
+     */
+    protected $httpClient = null;
 
     /**
      * The array of callbacks to be run after the event is finished.
@@ -597,9 +605,15 @@ class Event
      */
     protected function pingCallback($url)
     {
-        return function (Container $container, HttpClient $http) use ($url) {
+        return function (Container $container) use ($url) {
+            if (null === $this->httpClient) {
+                $this->httpClient = $container->bound(HttpClientInterface::class)
+                    ? $container->make(HttpClientInterface::class)
+                    : $container->make(HttpClient::class);
+            }
+
             try {
-                $http->request('GET', $url);
+                $this->httpClient->request('GET', $url);
             } catch (ClientExceptionInterface|TransferException $e) {
                 $container->make(ExceptionHandler::class)->report($e);
             }
